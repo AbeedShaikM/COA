@@ -33,7 +33,6 @@
 #include "cuda-sim/cuda-sim.h"
 #include "cuda-sim/ptx_ir.h"
 #include "cuda-sim/ptx_parser.h"
-#include "gpgpu-sim/counters.h"
 #include "gpgpu-sim/gpu-sim.h"
 #include "gpgpu-sim/icnt_wrapper.h"
 #include "option_parser.h"
@@ -71,18 +70,6 @@ void *gpgpu_sim_thread_sequential(void *ctx_ptr) {
 static void termination_callback() {
   printf("GPGPU-Sim: *** exit detected ***\n");
   fflush(stdout);
-  // WAITING, ISSUED, XALU, XMEM, OTHER
-  unsigned long long sum = 0;
-  sum = warp_state_counters[ISSUED] + warp_state_counters[WAITING] +
-        warp_state_counters[XMEM] + warp_state_counters[XALU] +
-        warp_state_counters[OTHER];
-  std::printf("ISSUED    : %llu\n", warp_state_counters[ISSUED]);
-  std::printf("WAITING   : %llu\n", warp_state_counters[WAITING]);
-  std::printf("XMEM      : %llu\n", warp_state_counters[XMEM]);
-  std::printf("XALU      : %llu\n", warp_state_counters[XALU]);
-  std::printf("OTHERS    : %llu\n", warp_state_counters[OTHER]);
-  std::printf("TOTAL WARPS : %llu\n", warp_state_counters[TOTAL]);
-  std::printf("EXP WARPS   : %llu\n", sum);
 }
 
 void *gpgpu_sim_thread_concurrent(void *ctx_ptr) {
