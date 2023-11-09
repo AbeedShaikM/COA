@@ -134,7 +134,6 @@ class shd_warp_t {
     n_completed -= active.count();  // active threads are not yet completed
     m_active_threads = active;
     m_done_exit = false;
-
     // Jin: cdp support
     m_cdp_latency = 0;
     m_cdp_dummy = false;
@@ -316,7 +315,8 @@ enum scheduler_prioritization_type {
 // Each of these corresponds to a string value in the gpgpsim.config file
 // For example - to specify the LRR scheudler the config must contain lrr
 enum concrete_scheduler {
-  CONCRETE_SCHEDULER_LRR = 0,
+  CONCRETE_SCHEDULER_KAWS = 0,
+  CONCRETE_SCHEDULER_LRR,
   CONCRETE_SCHEDULER_GTO,
   CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE,
   CONCRETE_SCHEDULER_WARP_LIMITING,
@@ -387,7 +387,7 @@ class scheduler_unit {  // this can be copied freely, so can be used in std
       unsigned num_warps_to_add, OrderingType age_ordering,
       bool (*priority_func)(U lhs, U rhs));
   static bool sort_warps_by_oldest_dynamic_id(shd_warp_t *lhs, shd_warp_t *rhs);
-
+  static bool sort_warps_by_progress(shd_warp_t *lhs, shd_warp_t *rhs);
   // Derived classes can override this function to populate
   // m_supervised_warps with their scheduling policies
   virtual void order_warps() = 0;
@@ -442,9 +442,27 @@ class lrr_scheduler : public scheduler_unit {
                 std::vector<register_set *> &spec_cores_out,
                 register_set *mem_out, int id)
       : scheduler_unit(stats, shader, scoreboard, simt, warp, sp_out, dp_out,
+                       sfu_out, int_out, tensor_core_out, spec_cores_out,                       mem_out, id) {}
+  virtual ~lrr_scheduler() {}
+  virtual void order_warps();
+  virtual void done_adding_supervised_warps() {
+    m_last_supervised_issued = m_supervised_warps.end();
+  }
+};
+
+class KAWS : public scheduler_unit {
+ public:
+  KAWS(shader_core_stats *stats, shader_core_ctx *shader,
+       Scoreboard *scoreboard, simt_stack **simt,
+       std::vector<shd_warp_t *> *warp, register_set *sp_out,
+       register_set *dp_out, register_set *sfu_out, register_set *int_out,
+       register_set *tensor_core_out,
+       std::vector<register_set *> &spec_cores_out, register_set *mem_out,
+       int id)
+      : scheduler_unit(stats, shader, scoreboard, simt, warp, sp_out, dp_out,
                        sfu_out, int_out, tensor_core_out, spec_cores_out,
                        mem_out, id) {}
-  virtual ~lrr_scheduler() {}
+  virtual ~KAWS() {}
   virtual void order_warps();
   virtual void done_adding_supervised_warps() {
     m_last_supervised_issued = m_supervised_warps.end();
@@ -2252,6 +2270,7 @@ class shader_core_ctx : public core_t {
 
   // Jin: concurrent kernels on a sm
  public:
+  unsigned m_cta_progress[MAX_CTA_PER_SHADER];
   bool can_issue_1block(kernel_info_t &kernel);
   bool occupy_shader_resource_1block(kernel_info_t &kernel, bool occupy);
   void release_shader_resource_1block(unsigned hw_ctaid, kernel_info_t &kernel);
