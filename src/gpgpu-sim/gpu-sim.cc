@@ -1663,7 +1663,6 @@ void shader_core_ctx::issue_block2core(kernel_info_t &kernel) {
              m_config->n_thread_per_shader);  // should be at least one, but
                                               // less than max
   m_cta_status[free_cta_hw_id] = nthreads_in_block;
-  m_cta_progress[free_cta_hw_id] = 0;
 
   if (m_gpu->resume_option == 1 && kernel.get_uid() == m_gpu->resume_kernel &&
       ctaid >= m_gpu->resume_CTA && ctaid < m_gpu->checkpoint_CTA_t) {
